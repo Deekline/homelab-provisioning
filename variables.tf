@@ -3,6 +3,11 @@ variable "proxmox_endpoint" {
   type        = string
 }
 
+variable "proxmox_node" {
+  description = "Proxmox node to provision VMs on for this run"
+  type        = string
+}
+
 variable "proxmox_api_token" {
   description = "Proxmox API token — format: USER@REALM!TOKENID=SECRET"
   type        = string
@@ -35,4 +40,16 @@ variable "dns_server" {
   description = "DNS server for all VMs"
   type        = string
   default     = "10.0.10.1"
+}
+
+variable "vms" {
+  description = "Map of VMs to provision on this node — add or remove entries in terraform.tfvars"
+  type = map(object({
+    vm_id      = number
+    ip_address = string
+    cpu_cores  = number
+    memory_mb  = number
+    disk_size  = number
+    role       = string
+  }))
 }

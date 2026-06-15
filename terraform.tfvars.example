@@ -1,0 +1,31 @@
+# Copy this file to node1.tfvars, node2.tfvars, etc. and fill in real values
+# Run: terraform apply -var-file=node1.tfvars
+# API token is passed separately via SOPS-encrypted file or env var:
+#   export TF_VAR_proxmox_api_token="terraform@pve!homelab=xxxx-..."
+
+proxmox_endpoint = "https://10.0.10.31:8006"
+proxmox_node     = "pve-1"
+template_vm_id   = 9000
+datastore_id     = "local-lvm"
+ssh_public_key   = "ssh-ed25519 AAAA... your-key-here"
+
+# gateway and dns_server default to 10.0.10.1 — only set if different
+
+vms = {
+  "k3s-cp-1" = {
+    vm_id      = 110
+    ip_address = "10.0.10.10"
+    cpu_cores  = 2
+    memory_mb  = 2048
+    disk_size  = 20
+    role       = "control-plane"
+  }
+  "k3s-worker-1" = {
+    vm_id      = 120
+    ip_address = "10.0.10.12"
+    cpu_cores  = 4
+    memory_mb  = 12288
+    disk_size  = 50
+    role       = "worker"
+  }
+}
