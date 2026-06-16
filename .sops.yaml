@@ -1,0 +1,7 @@
+# SOPS configuration
+# Reuses the same age key as homelab-infra — see homelab-infra/CLAUDE.md
+# for the encrypt/edit/rotate workflow.
+#
+creation_rules:
+  - path_regex: .*secrets\.tfvars$
+    age: age1vnjflcl0aeefw82f5klz764c4r5ddg9ad63y7vmu58dxmw026sms047q3j
