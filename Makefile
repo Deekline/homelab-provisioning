@@ -11,6 +11,7 @@ init:
 		chmod 600 $(AGE_KEY); \
 		echo "age key written to $(AGE_KEY)"; \
 	fi
+	terraform -chdir=terraform init
 
 plan:
 	@test -n "$(NODE)" || (echo "usage: make plan NODE=node1" && exit 1)
