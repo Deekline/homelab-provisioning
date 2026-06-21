@@ -1,4 +1,7 @@
-.PHONY: init plan apply destroy
+.PHONY: init plan apply destroy provision provision-node
+
+ANSIBLE_DIR := ansible
+INVENTORY   := $(ANSIBLE_DIR)/inventory/hosts.yml
 
 AGE_KEY := $(HOME)/.config/sops/age/keys.txt
 
@@ -30,3 +33,18 @@ destroy:
 	@sops -d terraform/secrets.tfvars > /tmp/secrets.tfvars
 	@trap 'rm -f /tmp/secrets.tfvars' EXIT; \
 	terraform -chdir=terraform destroy -var-file=/tmp/secrets.tfvars -var-file=$(NODE).tfvars
+
+# Provision all nodes (full cluster setup)
+provision:
+	ansible-playbook $(ANSIBLE_DIR)/site.yml \
+	  -i $(INVENTORY) \
+	  --ask-vault-pass
+
+# Provision a single node (use when adding a new node to an existing cluster)
+# Usage: make provision-node NODE=k3s-cp-3
+provision-node:
+	@test -n "$(NODE)" || (echo "usage: make provision-node NODE=k3s-cp-3" && exit 1)
+	ansible-playbook $(ANSIBLE_DIR)/site.yml \
+	  -i $(INVENTORY) \
+	  --ask-vault-pass \
+	  --limit=$(NODE)
