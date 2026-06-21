@@ -1,0 +1,52 @@
+---
+#   1. Base OS + NFS — all nodes in parallel
+#   2. k3s init node — starts the cluster, API available locally
+#   3. kube-vip init node — VIP (10.0.30.9) becomes reachable
+#   4. k3s server nodes — join via VIP
+#   5. kube-vip server nodes — each node participates in VIP failover
+#   6. Cilium — CNI installed from controller;
+
+- name: Base OS setup
+  hosts: k3s_control_plane
+  become: true
+  roles:
+    - base
+    - nfs
+
+- name: Bootstrap k3s on init node
+  hosts: k3s_control_plane
+  become: true
+  tasks:
+    - import_role:
+        name: k3s
+      when: k3s_role == 'init'
+
+- name: Deploy kube-vip on init node
+  hosts: k3s_control_plane
+  become: true
+  tasks:
+    - import_role:
+        name: kube-vip
+      when: k3s_role == 'init'
+
+- name: Join server nodes to cluster
+  hosts: k3s_control_plane
+  become: true
+  tasks:
+    - import_role:
+        name: k3s
+      when: k3s_role == 'server'
+
+- name: Deploy kube-vip on server nodes
+  hosts: k3s_control_plane
+  become: true
+  tasks:
+    - import_role:
+        name: kube-vip
+      when: k3s_role == 'server'
+
+- name: Install Cilium CNI
+  hosts: k3s_control_plane
+  run_once: true
+  roles:
+    - cilium

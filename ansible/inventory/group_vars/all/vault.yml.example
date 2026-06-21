@@ -1,0 +1,5 @@
+---
+# Generate a strong token:
+#   openssl rand -hex 32
+
+k3s_token: "REPLACE_WITH_OUTPUT_OF_openssl_rand_-hex_32"
