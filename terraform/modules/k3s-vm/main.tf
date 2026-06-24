@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    proxmox = {
+      source  = "bpg/proxmox"
+      version = "~> 0.66"
+    }
+  }
+}
+
 # NOTE: local-lvm is node-local storage. The Ubuntu 24.04 cloud-init template
 # (var.template_vm_id) must exist on every Proxmox node before running terraform apply.
 # Create the template on each node independently or switch to shared storage.
@@ -35,6 +44,7 @@ resource "proxmox_virtual_environment_vm" "this" {
     file_format  = "raw"
     discard      = "on"
     iothread     = true
+    ssd          = true
   }
 
   network_device {
