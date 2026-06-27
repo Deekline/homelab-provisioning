@@ -18,21 +18,24 @@ init:
 
 plan:
 	@test -n "$(NODE)" || (echo "usage: make plan NODE=node1" && exit 1)
-	@sops -d terraform/secrets.tfvars > /tmp/secrets.tfvars
+	@SECRETS=$$([ -f terraform/$(NODE)-secrets.tfvars ] && echo terraform/$(NODE)-secrets.tfvars || echo terraform/secrets.tfvars); \
+	sops -d $$SECRETS > /tmp/secrets.tfvars
 	@trap 'rm -f /tmp/secrets.tfvars' EXIT; \
-	terraform -chdir=terraform plan -var-file=/tmp/secrets.tfvars -var-file=$(NODE).tfvars
+	terraform -chdir=terraform plan -state=$(NODE).tfstate -var-file=/tmp/secrets.tfvars -var-file=$(NODE).tfvars
 
 apply:
 	@test -n "$(NODE)" || (echo "usage: make apply NODE=node1" && exit 1)
-	@sops -d terraform/secrets.tfvars > /tmp/secrets.tfvars
+	@SECRETS=$$([ -f terraform/$(NODE)-secrets.tfvars ] && echo terraform/$(NODE)-secrets.tfvars || echo terraform/secrets.tfvars); \
+	sops -d $$SECRETS > /tmp/secrets.tfvars
 	@trap 'rm -f /tmp/secrets.tfvars' EXIT; \
-	terraform -chdir=terraform apply -var-file=/tmp/secrets.tfvars -var-file=$(NODE).tfvars
+	terraform -chdir=terraform apply -state=$(NODE).tfstate -var-file=/tmp/secrets.tfvars -var-file=$(NODE).tfvars
 
 destroy:
 	@test -n "$(NODE)" || (echo "usage: make destroy NODE=node1" && exit 1)
-	@sops -d terraform/secrets.tfvars > /tmp/secrets.tfvars
+	@SECRETS=$$([ -f terraform/$(NODE)-secrets.tfvars ] && echo terraform/$(NODE)-secrets.tfvars || echo terraform/secrets.tfvars); \
+	sops -d $$SECRETS > /tmp/secrets.tfvars
 	@trap 'rm -f /tmp/secrets.tfvars' EXIT; \
-	terraform -chdir=terraform destroy -var-file=/tmp/secrets.tfvars -var-file=$(NODE).tfvars
+	terraform -chdir=terraform destroy -state=$(NODE).tfstate -var-file=/tmp/secrets.tfvars -var-file=$(NODE).tfvars
 
 # Provision all nodes (full cluster setup)
 provision:
