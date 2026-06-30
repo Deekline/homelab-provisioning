@@ -1,0 +1,19 @@
+---
+- include_tasks: init.yml
+  when: k3s_role == 'init'
+
+- include_tasks: server.yml
+  when: k3s_role == 'server'
+
+- include_tasks: agent.yml
+  when: k3s_role == 'agent'
+
+- name: Disable servicelb in k3s config (kube-vip handles service LB)
+  copy:
+    dest: /etc/rancher/k3s/config.yaml
+    content: |
+      disable:
+        - servicelb
+    mode: '0644'
+  when: k3s_role in ['init', 'server']
+  notify: restart k3s

@@ -1,0 +1,26 @@
+---
+- name: Add jetstack Helm repo
+  shell: helm repo add jetstack https://charts.jetstack.io && helm repo update
+  delegate_to: localhost
+  become: false
+  changed_when: false
+
+- name: Install or upgrade cert-manager
+  shell: |
+    helm upgrade --install cert-manager jetstack/cert-manager \
+      --namespace cert-manager \
+      --create-namespace \
+      -f {{ infra_dir }}/k3s/cert-manager/values.yaml
+  environment:
+    KUBECONFIG: "{{ lookup('env', 'HOME') }}/.kube/config"
+  delegate_to: localhost
+  become: false
+
+- name: Wait for cert-manager to be ready
+  shell: |
+    kubectl wait --for=condition=available deployment/cert-manager \
+      -n cert-manager --timeout=300s
+  environment:
+    KUBECONFIG: "{{ lookup('env', 'HOME') }}/.kube/config"
+  delegate_to: localhost
+  become: false

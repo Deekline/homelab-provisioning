@@ -1,0 +1,8 @@
+---
+# Nodes need nfs-common so the kernel can mount NFS volumes.
+# The actual mounts are created by Kubernetes (nfs-provisioner in homelab-infra).
+- name: Install nfs-common
+  apt:
+    name: nfs-common
+    state: present
+    update_cache: false

@@ -1,0 +1,107 @@
+---
+# Runs on localhost (Ansible controller). Kubeconfig written by the cilium role.
+# Age key is pulled from 1Password (same vault/item as `make init`).
+
+- name: Fetch SOPS age key from 1Password
+  command: op document get sops-age-key --vault="{{ op_vault }}"
+  register: age_key_content
+  no_log: true
+  changed_when: false
+
+- name: Write age key to temp file
+  copy:
+    content: "{{ age_key_content.stdout }}\n"
+    dest: /tmp/sops-age-key-bootstrap.txt
+    mode: '0600'
+  no_log: true
+
+- name: Create sops-secrets-operator namespace
+  shell: kubectl create namespace sops-secrets-operator --dry-run=client -o yaml | kubectl apply -f -
+  environment:
+    KUBECONFIG: "{{ lookup('env', 'HOME') }}/.kube/config"
+  changed_when: false
+
+- name: Create sops age key secret in sops-secrets-operator namespace
+  shell: |
+    kubectl create secret generic sops-age-key \
+      --from-file=keys.txt=/tmp/sops-age-key-bootstrap.txt \
+      -n sops-secrets-operator \
+      --dry-run=client -o yaml | kubectl apply -f -
+  environment:
+    KUBECONFIG: "{{ lookup('env', 'HOME') }}/.kube/config"
+  no_log: true
+  changed_when: false
+
+- name: Create argocd namespace
+  shell: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+  environment:
+    KUBECONFIG: "{{ lookup('env', 'HOME') }}/.kube/config"
+  changed_when: false
+
+- name: Create sops age key secret in argocd namespace
+  shell: |
+    kubectl create secret generic sops-age-key \
+      --from-file=keys.txt=/tmp/sops-age-key-bootstrap.txt \
+      -n argocd \
+      --dry-run=client -o yaml | kubectl apply -f -
+  environment:
+    KUBECONFIG: "{{ lookup('env', 'HOME') }}/.kube/config"
+  no_log: true
+  changed_when: false
+
+- name: Remove age key temp file
+  file:
+    path: /tmp/sops-age-key-bootstrap.txt
+    state: absent
+
+- name: Add Helm repos
+  shell: |
+    helm repo add sops-secrets-operator https://isindir.github.io/sops-secrets-operator/
+    helm repo add argo https://argoproj.github.io/argo-helm
+    helm repo update
+  changed_when: false
+
+- name: Install or upgrade sops-secrets-operator
+  shell: |
+    helm upgrade --install sops-operator sops-secrets-operator/sops-secrets-operator \
+      --version {{ sops_operator_chart_version }} \
+      -n sops-secrets-operator \
+      -f {{ infra_dir }}/k3s/sops-operator/values.yaml
+  environment:
+    KUBECONFIG: "{{ lookup('env', 'HOME') }}/.kube/config"
+
+- name: Install or upgrade ArgoCD
+  shell: |
+    helm upgrade --install argocd argo/argo-cd \
+      --version {{ argocd_chart_version }} \
+      -n argocd \
+      -f {{ infra_dir }}/k3s/argocd/values.yaml
+  environment:
+    KUBECONFIG: "{{ lookup('env', 'HOME') }}/.kube/config"
+
+- name: Wait for ArgoCD server to be ready
+  shell: |
+    kubectl wait --for=condition=available deployment/argocd-server \
+      -n argocd --timeout=300s
+  environment:
+    KUBECONFIG: "{{ lookup('env', 'HOME') }}/.kube/config"
+
+- name: Create Gitea SSH credentials secret for ArgoCD
+  shell: |
+    kubectl create secret generic gitea-homelab-infra \
+      --from-literal=type=git \
+      --from-literal=url={{ gitea_ssh_url }} \
+      --from-file=sshPrivateKey={{ argocd_gitea_ssh_key_path }} \
+      -n argocd \
+      --dry-run=client -o yaml | kubectl apply -f -
+    kubectl label secret gitea-homelab-infra -n argocd \
+      argocd.argoproj.io/secret-type=repository \
+      --overwrite
+  environment:
+    KUBECONFIG: "{{ lookup('env', 'HOME') }}/.kube/config"
+  no_log: true
+
+- name: Apply root ArgoCD Application (app-of-apps)
+  shell: kubectl apply -f {{ infra_dir }}/apps/root.yaml
+  environment:
+    KUBECONFIG: "{{ lookup('env', 'HOME') }}/.kube/config"
