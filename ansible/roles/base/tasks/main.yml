@@ -74,3 +74,13 @@
 - name: Disable UFW — k3s nodes use Cilium for network policy
   ufw:
     state: disabled
+
+- name: Increase inotify watch limits for Kubernetes
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/99-kubernetes.conf
+    reload: true
+  loop:
+    - { name: fs.inotify.max_user_watches, value: "524288" }
+    - { name: fs.inotify.max_user_instances, value: "512" }
