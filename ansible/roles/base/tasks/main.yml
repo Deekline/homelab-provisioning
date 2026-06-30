@@ -14,11 +14,18 @@
       - htop
       - jq
       - open-iscsi
+      - qemu-guest-agent
     state: present
 
 - name: Enable and start iscsid
   systemd:
     name: iscsid
+    enabled: true
+    state: started
+
+- name: Enable and start qemu-guest-agent
+  systemd:
+    name: qemu-guest-agent
     enabled: true
     state: started
 
@@ -45,45 +52,25 @@
     mode: '0644'
   notify: restart sshd
 
-- name: Install UFW
-  apt:
-    name: ufw
-    state: present
+- name: Disable cloud-init network config (prevents re-adding search domain on reboot)
+  copy:
+    dest: /etc/cloud/cloud.cfg.d/99-no-network-config.cfg
+    content: "network: {config: disabled}\n"
+    mode: '0644'
 
-- name: UFW — default deny incoming
-  ufw:
-    default: deny
-    direction: incoming
+- name: Remove search key from netplan cloud-init config
+  lineinfile:
+    path: /etc/netplan/50-cloud-init.yaml
+    regexp: '^\s+search:\s*$'
+    state: absent
 
-- name: UFW — default allow outgoing
-  ufw:
-    default: allow
-    direction: outgoing
+- name: Remove d-kline.org search entry from netplan cloud-init config
+  lineinfile:
+    path: /etc/netplan/50-cloud-init.yaml
+    regexp: '^\s+-\s+d-kline\.org\s*$'
+    state: absent
+  notify: netplan apply and restart resolved
 
-- name: UFW — allow SSH from homelab subnets only
+- name: Disable UFW — k3s nodes use Cilium for network policy
   ufw:
-    rule: allow
-    port: "22"
-    proto: tcp
-    src: "10.0.0.0/8"
-
-- name: UFW — allow all traffic within cluster subnet (etcd, kubelet, VRRP, Cilium)
-  ufw:
-    rule: allow
-    src: "10.0.30.0/24"
-
-- name: UFW — allow HTTP for Traefik ingress
-  ufw:
-    rule: allow
-    port: "80"
-    proto: tcp
-
-- name: UFW — allow HTTPS for Traefik ingress
-  ufw:
-    rule: allow
-    port: "443"
-    proto: tcp
-
-- name: UFW — enable
-  ufw:
-    state: enabled
+    state: disabled

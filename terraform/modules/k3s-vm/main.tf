@@ -28,7 +28,7 @@ resource "proxmox_virtual_environment_vm" "this" {
 
   cpu {
     cores = var.cpu_cores
-    type  = "x86-64-v2-AES"
+    type  = "host"
   }
 
   memory {
@@ -48,8 +48,7 @@ resource "proxmox_virtual_environment_vm" "this" {
   }
 
   network_device {
-    bridge  = "vmbr0"
-    vlan_id = 10
+    bridge = "vmbr0"
   }
 
   operating_system {
@@ -58,6 +57,7 @@ resource "proxmox_virtual_environment_vm" "this" {
 
   agent {
     enabled = true
+    timeout = "1m"
   }
 
   initialization {
@@ -77,6 +77,7 @@ resource "proxmox_virtual_environment_vm" "this" {
 
     dns {
       servers = [var.dns_server]
+      domain  = ""
     }
   }
 }

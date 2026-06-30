@@ -1,13 +1,12 @@
 ---
+# Provisioning order:
 #   1. Base OS + NFS — all nodes in parallel
 #   2. k3s init node — starts the cluster, API available locally
-#   3. kube-vip init node — VIP (10.0.30.9) becomes reachable
-#   4. k3s server nodes — join via VIP
-#   5. kube-vip server nodes — each node participates in VIP failover
-#   6. Cilium — CNI installed from controller;
+#   3. kube-vip init node — VIP (10.0.10.9) becomes reachable
+#   4. k3s worker nodes — join via VIP as agents
 
 - name: Base OS setup
-  hosts: k3s_control_plane
+  hosts: all
   become: true
   roles:
     - base
@@ -29,24 +28,39 @@
         name: kube-vip
       when: k3s_role == 'init'
 
-- name: Join server nodes to cluster
-  hosts: k3s_control_plane
+- name: Join worker nodes to cluster
+  hosts: k3s_workers
   become: true
-  tasks:
-    - import_role:
-        name: k3s
-      when: k3s_role == 'server'
-
-- name: Deploy kube-vip on server nodes
-  hosts: k3s_control_plane
-  become: true
-  tasks:
-    - import_role:
-        name: kube-vip
-      when: k3s_role == 'server'
+  roles:
+    - k3s
 
 - name: Install Cilium CNI
   hosts: k3s_control_plane
   run_once: true
   roles:
     - cilium
+
+- name: Taint control plane nodes — system pods only
+  hosts: localhost
+  connection: local
+  tasks:
+    - name: Apply NoSchedule taint to control plane nodes
+      shell: |
+        kubectl taint node {{ item }} \
+          node-role.kubernetes.io/control-plane:NoSchedule \
+          --overwrite
+      loop: "{{ groups['k3s_control_plane'] }}"
+      environment:
+        KUBECONFIG: "{{ lookup('env', 'HOME') }}/.kube/config"
+
+- name: Install cert-manager (CRDs must exist before ArgoCD syncs)
+  hosts: localhost
+  connection: local
+  roles:
+    - cert-manager
+
+- name: Bootstrap ArgoCD (app-of-apps — deploys all services from Gitea)
+  hosts: localhost
+  connection: local
+  roles:
+    - argocd
