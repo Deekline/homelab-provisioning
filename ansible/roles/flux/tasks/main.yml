@@ -1,0 +1,45 @@
+---
+# Runs on localhost (Ansible controller). Kubeconfig written by the cilium role.
+# Coexists with the argocd role during the ArgoCD -> Flux migration; both are
+# applied by site.yml until ArgoCD is decommissioned.
+
+- name: Add Flux Helm repo
+  shell: |
+    helm repo add fluxcd-community https://fluxcd-community.github.io/helm-charts
+    helm repo update fluxcd-community
+  changed_when: false
+
+- name: Install or upgrade Flux controllers
+  shell: |
+    helm upgrade --install flux2 fluxcd-community/flux2 \
+      --version {{ flux_chart_version }} \
+      -n flux-system \
+      --create-namespace \
+      -f {{ infra_dir }}/k3s/flux/values.yaml
+  environment:
+    KUBECONFIG: "{{ lookup('env', 'HOME') }}/.kube/config"
+
+- name: Wait for Flux controllers to be ready
+  shell: |
+    kubectl wait --for=condition=available deployment \
+      -n flux-system --all --timeout=300s
+  environment:
+    KUBECONFIG: "{{ lookup('env', 'HOME') }}/.kube/config"
+
+- name: Create Gitea SSH credentials secret for Flux
+  shell: |
+    kubectl create secret generic gitea-deploy-key \
+      --from-file=identity={{ flux_gitea_ssh_key_path }} \
+      --from-literal=known_hosts="{{ gitea_ssh_host_key }}" \
+      -n flux-system \
+      --dry-run=client -o yaml | kubectl apply -f -
+  environment:
+    KUBECONFIG: "{{ lookup('env', 'HOME') }}/.kube/config"
+  no_log: true
+
+- name: Apply Flux GitRepository and root Kustomization
+  shell: |
+    kubectl apply -f {{ infra_dir }}/flux/git-source.yaml
+    kubectl apply -f {{ infra_dir }}/flux/root-kustomization.yaml
+  environment:
+    KUBECONFIG: "{{ lookup('env', 'HOME') }}/.kube/config"

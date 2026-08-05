@@ -53,11 +53,21 @@
       environment:
         KUBECONFIG: "{{ lookup('env', 'HOME') }}/.kube/config"
 
-- name: Install cert-manager (CRDs must exist before ArgoCD syncs)
+- name: Install cert-manager (CRDs must exist before GitOps controllers sync)
   hosts: localhost
   connection: local
   roles:
     - cert-manager
+
+# ArgoCD -> Flux migration in progress: both bootstrap plays run side by side
+# until every app has been cut over and the argocd role/play is removed
+# (migration plan step 7).
+
+- name: Bootstrap Flux (GitRepository + root Kustomization from Gitea)
+  hosts: localhost
+  connection: local
+  roles:
+    - flux
 
 - name: Bootstrap ArgoCD (app-of-apps — deploys all services from Gitea)
   hosts: localhost
