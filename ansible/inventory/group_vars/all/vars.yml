@@ -18,7 +18,11 @@ argocd_chart_version: "10.0.0"
 sops_operator_chart_version: "0.27.1"
 
 # Flux bootstrap — verify chart versions with `helm search repo fluxcd-community/flux2 --versions`
-flux_chart_version: "2.19.0"
+# Pinned below latest: 2.18.x/2.19.x bundle flux-cli >=2.8.1, whose `flux check --pre`
+# pre-install hook hard-requires k8s >=1.33.0-0 and BackoffLimitExceeds on our k3s v1.32.3
+# control plane. 2.17.2 (flux-cli 2.7.5) requires only >=1.32.0-0 and passes.
+# TODO(k3s-upgrade): bump this once the control plane is on k8s 1.33+.
+flux_chart_version: "2.17.2"
 
 # Path to infra repo on the Ansible controller (Gitea-tracked, not this repo)
 infra_dir: "{{ lookup('env', 'HOME') }}/homelab/infra"
