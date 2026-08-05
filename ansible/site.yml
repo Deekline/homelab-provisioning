@@ -66,6 +66,7 @@
 - name: Bootstrap Flux (GitRepository + root Kustomization from Gitea)
   hosts: localhost
   connection: local
+  tags: [flux]
   roles:
     - flux
 
