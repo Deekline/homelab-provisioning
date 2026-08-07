@@ -1,7 +1,48 @@
 ---
 # Runs on localhost (Ansible controller). Kubeconfig written by the cilium role.
-# Coexists with the argocd role during the ArgoCD -> Flux migration; both are
-# applied by site.yml until ArgoCD is decommissioned.
+# ArgoCD -> Flux migration complete (2026-08-07) — this role now owns the
+# sops-secrets-operator bootstrap prerequisites too (moved from the removed
+# argocd role): sops-secrets-operator itself is installed by Flux's own
+# HelmRelease (see flux/sops-operator.yaml in the infra repo) once this role
+# gets Flux's controllers and root Kustomization running, but the operator's
+# pod still needs the SOPS_AGE_KEY secret to exist beforehand or it
+# crash-loops on first start — nothing else creates that secret, so it has
+# to happen here.
+
+- name: Fetch SOPS age key from 1Password
+  command: op document get sops-age-key --vault="{{ op_vault }}"
+  register: age_key_content
+  no_log: true
+  changed_when: false
+
+- name: Write age key to temp file
+  copy:
+    content: "{{ age_key_content.stdout }}\n"
+    dest: /tmp/sops-age-key-bootstrap.txt
+    mode: '0600'
+  no_log: true
+
+- name: Create sops-secrets-operator namespace
+  shell: kubectl create namespace sops-secrets-operator --dry-run=client -o yaml | kubectl apply -f -
+  environment:
+    KUBECONFIG: "{{ lookup('env', 'HOME') }}/.kube/config"
+  changed_when: false
+
+- name: Create sops age key secret in sops-secrets-operator namespace
+  shell: |
+    kubectl create secret generic sops-age-key \
+      --from-file=keys.txt=/tmp/sops-age-key-bootstrap.txt \
+      -n sops-secrets-operator \
+      --dry-run=client -o yaml | kubectl apply -f -
+  environment:
+    KUBECONFIG: "{{ lookup('env', 'HOME') }}/.kube/config"
+  no_log: true
+  changed_when: false
+
+- name: Remove age key temp file
+  file:
+    path: /tmp/sops-age-key-bootstrap.txt
+    state: absent
 
 - name: Add Flux Helm repo
   shell: |

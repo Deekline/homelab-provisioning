@@ -12,11 +12,6 @@ kube_vip_interface: "eth0"
 
 k3s_install_url: "https://get.k3s.io"
 
-# ArgoCD bootstrap — verify chart versions with `helm search repo <chart> --versions`
-# TODO(argocd->flux): remove once ArgoCD is decommissioned (migration plan step 7)
-argocd_chart_version: "10.0.0"
-sops_operator_chart_version: "0.27.1"
-
 # Flux bootstrap — verify chart versions with `helm search repo fluxcd-community/flux2 --versions`
 # Pinned below latest: 2.18.x/2.19.x bundle flux-cli >=2.8.1, whose `flux check --pre`
 # pre-install hook hard-requires k8s >=1.33.0-0 and BackoffLimitExceeds on our k3s v1.32.3
@@ -32,10 +27,6 @@ gitea_ssh_url: "ssh://git@10.0.10.150:30009/deekline/homelab-infra.git"
 
 # Gitea host SSH key, used for known_hosts (same host as gitea_ssh_url)
 gitea_ssh_host_key: "[10.0.10.150]:30009 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC/clf93dGeYwHGdT+E88jwyJmHc/J+QF8XygAM8EorWIFCz/XBX61wjcEy7V3WJXniTTMJVsoqEKbxW6ud9A7HlF4rgJkizJ1IZNfJggYKRWMHT3YgvLbU7zCC64vqAcfmTzVVDzy+Rv2iFKDJt64g6t5cad8bP0pnEtNtQUdI07QRY1j8HxhBJx0TQWoDFZY4bEGsTe9o+H3wgQPZwLJwB0I85qYljeT9fOHg5PuBekmXD8YT4yxR5goIbHYE/OBG/voicfAO9DbHyTIcrFGiepgQhV9hWPpi1+lZXh65B0JpDjRUSmaj9sKLytkmpKaITh6c2m2plxMyDL5TJtqUj2mV5MZXXHin8PpPPVsyn2gAlNpTVZ1MR4PGSnNzcNvFB81PQ3DH4A2p24BcTD9UJ0YagkZhlHL0GyvwTVcYRjnMysRkicm93cP6V6DSH7E552payhGyID4YLJo7vCeevydbMsWmQwnvBsFhzFi9vJSD5Km2ZVnPr02p8zuZ2csc74op45kaKFrKigwZi/2pl3BRD45d9qXqFdkIiMCfObjLSnflGSiDgMyKRW+PiRAV8rqkNDAnO0pw0WEUxJIPupwZGHqlfHBcaJgidLkuid+Q9S+0hkkDz5/wF9HaKLopgbF64sawFnWL0pLJKTCratEugfN1rMhPSm0vz9wV1Q=="
-
-# SSH key used by ArgoCD to authenticate to Gitea (added as deploy key in Gitea)
-# TODO(argocd->flux): remove once ArgoCD is decommissioned (migration plan step 7)
-argocd_gitea_ssh_key_path: "{{ lookup('env', 'HOME') }}/.ssh/argocd_gitea"
 
 # SSH key used by Flux's GitRepository to authenticate to Gitea (added as a
 # read-only deploy key in Gitea, separate from ArgoCD's key)
